@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transit Destinations · from Peterborough</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg: #eef2f7;
+    --panel: #ffffff;
+    --panel-soft: #f4f7fb;
+    --ink: #0f1720;
+    --ink-soft: #4a5b6c;
+    --ink-mute: #8095a8;
+    --line: #e3ebf2;
+    --accent: #0e7a5f;
+    --accent-deep: #0a5a47;
+    --accent-soft: #d8efe7;
+    --warn: #b91c1c;
+    --shadow: 0 4px 14px rgba(15, 23, 32, 0.06), 0 1px 3px rgba(15, 23, 32, 0.04);
+    --radius: 14px;
+    --radius-sm: 10px;
+}
+* { box-sizing: border-box; font-family: 'Inter', system-ui, sans-serif; }
+body { margin:0; background: var(--bg); color: var(--ink); min-height: 100vh; }
+
+.app-header {
+    background: linear-gradient(135deg, #102434 0%, #1a3a4d 100%);
+    color: white; padding: 16px 24px;
+}
+.app-header h1 {
+    margin: 0; font-size: 1.1rem; font-weight: 700; letter-spacing: -0.01em;
+    display: flex; gap: 10px; align-items: center;
+}
+.app-header h1 .logo {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: linear-gradient(135deg, #14b886, #0e7a5f);
+    display: inline-flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 8px rgba(20, 184, 134, 0.4);
+}
+.sub { font-size: 0.78rem; opacity: 0.7; font-weight: 500; margin-top: 4px; }
+
+.container {
+    max-width: 1300px; margin: 0 auto; padding: 20px;
+    display: grid; grid-template-columns: 1fr 480px; gap: 20px;
+}
+@media (max-width: 980px) {
+    .container { grid-template-columns: 1fr; }
+    .map-card { height: 360px; }
+}
+
+.card {
+    background: var(--panel); border-radius: var(--radius);
+    border: 1px solid var(--line); box-shadow: var(--shadow);
+    padding: 18px; margin-bottom: 16px;
+}
+.card:last-child { margin-bottom: 0; }
+.card h3 {
+    margin: 0 0 14px 0; font-size: 0.78rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft);
+    display: flex; gap: 8px; align-items: center;
+}
+.card h3 i { color: var(--accent); }
+.card h3 .count {
+    margin-left: auto; font-size: 0.7rem; color: var(--ink-mute); font-weight: 600;
+    text-transform: none; letter-spacing: 0;
+}
+
+/* Add form */
+.add-grid {
+    display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px;
+}
+.add-grid .full { grid-column: 1 / -1; }
+input, textarea, select {
+    width: 100%;
+    border-radius: var(--radius-sm); border: 1px solid var(--line);
+    padding: 9px 12px; font-size: 0.85rem; background: white; color: var(--ink);
+    transition: border-color 0.15s, box-shadow 0.15s;
+    outline: none; font-family: inherit;
+}
+textarea { resize: vertical; min-height: 60px; }
+input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+label {
+    display: block; font-weight: 600; font-size: 0.7rem; color: var(--ink-soft);
+    letter-spacing: 0.02em; margin-bottom: 4px;
+}
+.field { margin-bottom: 0; }
+
+button {
+    border-radius: var(--radius-sm); border: none;
+    padding: 9px 14px; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+    background: var(--accent); color: white; font-family: inherit;
+    transition: transform 0.08s, background 0.15s;
+    display: inline-flex; align-items: center; gap: 6px;
+}
+button:hover { background: var(--accent-deep); }
+button:active { transform: scale(0.97); }
+button.btn-outline {
+    background: white; color: var(--ink); border: 1px solid var(--line);
+}
+button.btn-outline:hover { background: var(--panel-soft); border-color: #c5d4e0; }
+button.btn-ghost {
+    background: transparent; color: var(--ink-soft); padding: 6px 10px;
+}
+button.btn-ghost:hover { background: var(--panel-soft); color: var(--ink); }
+button.btn-danger-ghost {
+    background: transparent; color: var(--ink-mute); padding: 6px 8px;
+}
+button.btn-danger-ghost:hover { color: var(--warn); background: transparent; }
+button.btn-block { width: 100%; justify-content: center; }
+
+/* Controls bar */
+.controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+.seg {
+    display: inline-flex; background: var(--panel-soft); padding: 3px; border-radius: 10px;
+    border: 1px solid var(--line);
+}
+.seg button {
+    background: transparent; border: none; padding: 6px 12px; font-size: 0.75rem; font-weight: 600;
+    color: var(--ink-soft); cursor: pointer; border-radius: 7px;
+}
+.seg button.active { background: white; color: var(--accent-deep); box-shadow: var(--shadow); }
+.seg button:hover:not(.active) { color: var(--ink); }
+.control-label { font-size: 0.7rem; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* Destination rows */
+.dest-list { display: flex; flex-direction: column; gap: 8px; }
+.dest-row {
+    border: 1px solid var(--line); border-radius: var(--radius-sm);
+    background: white; transition: border-color 0.15s, box-shadow 0.15s;
+    overflow: hidden;
+}
+.dest-row:hover { border-color: #c5d4e0; }
+.dest-row.highlighted { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(14, 122, 95, 0.12); }
+
+.dest-main {
+    display: grid; grid-template-columns: auto 1fr auto auto; gap: 12px;
+    align-items: center; padding: 12px 14px;
+    cursor: pointer;
+}
+.drag-handle {
+    color: var(--ink-mute); cursor: grab; font-size: 0.9rem;
+    padding: 0 2px;
+}
+.drag-handle:active { cursor: grabbing; }
+
+.dest-info { min-width: 0; }
+.dest-name { font-weight: 600; font-size: 0.92rem; }
+.dest-route { font-size: 0.74rem; color: var(--ink-mute); margin-top: 2px; line-height: 1.4; }
+.dest-route.empty { font-style: italic; opacity: 0.6; }
+
+.dest-time {
+    font-weight: 700; font-size: 0.95rem; letter-spacing: -0.01em;
+    padding: 6px 12px; border-radius: 8px; white-space: nowrap;
+    background: var(--accent-soft); color: var(--accent-deep);
+}
+.dest-time.empty { background: #e9eef3; color: var(--ink-mute); font-weight: 500; }
+
+.dest-actions {
+    display: flex; gap: 2px;
+}
+
+/* Edit panel */
+.dest-edit {
+    padding: 14px; background: var(--panel-soft); border-top: 1px solid var(--line);
+    display: none;
+}
+.dest-row.editing .dest-edit { display: block; }
+.dest-row.editing .dest-main { background: var(--panel-soft); }
+
+.edit-grid {
+    display: grid; grid-template-columns: 1.4fr 1fr; gap: 10px; margin-bottom: 10px;
+}
+.edit-grid .full { grid-column: 1 / -1; }
+.edit-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* Empty state */
+.empty {
+    text-align: center; padding: 40px 20px; color: var(--ink-mute);
+}
+.empty i { font-size: 2rem; margin-bottom: 12px; color: var(--ink-mute); opacity: 0.5; }
+.empty p { margin: 4px 0; font-size: 0.85rem; }
+.empty .small { font-size: 0.75rem; opacity: 0.8; }
+
+/* Map */
+.map-card { padding: 0; overflow: hidden; height: 600px; position: sticky; top: 20px; }
+#map { width: 100%; height: 100%; }
+
+.map-legend {
+    position: absolute; bottom: 16px; left: 16px; z-index: 1000;
+    background: white; border-radius: var(--radius-sm); padding: 8px 12px;
+    box-shadow: var(--shadow); border: 1px solid var(--line);
+    font-size: 0.72rem; color: var(--ink-soft);
+}
+
+/* Locate button states */
+.locate-status { font-size: 0.7rem; color: var(--ink-mute); margin-top: 4px; }
+.locate-status.success { color: var(--accent); }
+.locate-status.error { color: var(--warn); }
+
+/* Import/export */
+.io-buttons { display: flex; gap: 6px; }
+.io-buttons button { font-size: 0.72rem; padding: 6px 10px; }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+    <h1>
+        <span class="logo"><i class="fas fa-route" style="font-size:0.8rem;"></i></span>
+        Transit Destinations
+    </h1>
+    <div class="sub">Your own notes on places you might commute to from Peterborough</div>
+</div>
+
+<div class="container">
+
+    <!-- Left column: form + list -->
+    <div>
+        <!-- Add new -->
+        <div class="card">
+            <h3><i class="fas fa-plus"></i> Add a destination</h3>
+            <div class="add-grid">
+                <div class="field">
+                    <label>Name</label>
+                    <input type="text" id="newName" placeholder="e.g. Oshawa, Pickering job site">
+                </div>
+                <div class="field">
+                    <label>One-way transit time</label>
+                    <input type="text" id="newTime" placeholder="e.g. 1h 45m, or 105">
+                </div>
+                <div class="field full">
+                    <label>Route &amp; notes</label>
+                    <textarea id="newRoute" placeholder="e.g. GO 88 direct, last bus 11:15pm. Verified Oct."></textarea>
+                </div>
+                <div class="full">
+                    <button id="addBtn" class="btn-block"><i class="fas fa-plus"></i> Add destination</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- List -->
+        <div class="card">
+            <h3>
+                <i class="fas fa-list"></i> Your destinations
+                <span class="count" id="destCount">0</span>
+            </h3>
+
+            <div class="controls">
+                <span class="control-label">Sort</span>
+                <div class="seg" id="sortSeg">
+                    <button data-sort="manual" class="active">Manual order</button>
+                    <button data-sort="time">By time</button>
+                    <button data-sort="name">By name</button>
+                </div>
+                <div style="margin-left:auto;" class="io-buttons">
+                    <button class="btn-outline" id="exportBtn" title="Download your list as JSON"><i class="fas fa-download"></i> Export</button>
+                    <button class="btn-outline" id="importBtn" title="Load a previously exported list"><i class="fas fa-upload"></i> Import</button>
+                    <input type="file" id="importFile" accept="application/json" style="display:none;">
+                </div>
+            </div>
+
+            <div class="dest-list" id="destList"></div>
+        </div>
+    </div>
+
+    <!-- Right column: map -->
+    <div class="card map-card">
+        <div id="map"></div>
+        <div class="map-legend">
+            <i class="fas fa-house" style="color:var(--accent);"></i> Peterborough · click "Locate" on any row to add a pin
+        </div>
+    </div>
+
+</div>
+
+<script>
+// ---------- STORAGE ----------
+const STORAGE_KEY = 'transit_destinations_v1';
+const HOME = { name: "Peterborough", lat: 44.3091, lng: -78.3197 };
+
+let destinations = loadDestinations();
+let sortMode = 'manual';
+let editingId = null;
+let map, markers = {}, homeMarker;
+
+function loadDestinations() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return [];
+}
+function saveDestinations() {
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(destinations));
+    } catch (e) {
+        alert("Couldn't save to browser storage: " + e.message);
+    }
+}
+
+// ---------- HELPERS ----------
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+// Parse "1h 45m", "105", "1:45", "90 min" → minutes (or null)
+function parseTime(str) {
+    if (!str) return null;
+    const s = String(str).trim().toLowerCase();
+    if (!s) return null;
+    // "1:45" or "1.45"
+    let m = s.match(/^(\d+)[:.](\d+)$/);
+    if (m) return parseInt(m[1])*60 + parseInt(m[2]);
+    // "1h 45m" / "1h45" / "1h"
+    m = s.match(/(\d+)\s*h(?:\s*(\d+)\s*m?)?/);
+    if (m) return parseInt(m[1])*60 + parseInt(m[2] || 0);
+    // "45m" / "45 min" / "45"
+    m = s.match(/^(\d+)\s*(m|min|mins|minutes)?$/);
+    if (m) return parseInt(m[1]);
+    return null;
+}
+function formatTime(min) {
+    if (min === null || min === undefined || isNaN(min)) return null;
+    const h = Math.floor(min/60), m = min%60;
+    if (h === 0) return `${m}m`;
+    if (m === 0) return `${h}h`;
+    return `${h}h ${m}m`;
+}
+function escapeHtml(s) {
+    return String(s||'').replace(/[&<>"]/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[m]));
+}
+
+// ---------- RENDER ----------
+function render() {
+    const list = document.getElementById('destList');
+    document.getElementById('destCount').innerText =
+        destinations.length === 0 ? 'empty' :
+        destinations.length === 1 ? '1 destination' : `${destinations.length} destinations`;
+
+    if (destinations.length === 0) {
+        list.innerHTML = `
+            <div class="empty">
+                <i class="fas fa-map-location-dot"></i>
+                <p><strong>No destinations yet.</strong></p>
+                <p class="small">Add one above — anywhere you might apply for jobs and want to remember the bus time for.</p>
+            </div>
+        `;
+        refreshMarkers();
+        return;
+    }
+
+    let items = [...destinations];
+    if (sortMode === 'time') {
+        items.sort((a,b) => {
+            const at = parseTime(a.time), bt = parseTime(b.time);
+            if (at === null && bt === null) return 0;
+            if (at === null) return 1;
+            if (bt === null) return -1;
+            return at - bt;
+        });
+    } else if (sortMode === 'name') {
+        items.sort((a,b) => a.name.localeCompare(b.name));
+    }
+
+    list.innerHTML = '';
+    items.forEach(d => list.appendChild(makeRow(d)));
+    refreshMarkers();
+}
+
+function makeRow(d) {
+    const row = document.createElement('div');
+    row.className = 'dest-row' + (editingId === d.id ? ' editing' : '');
+    row.dataset.id = d.id;
+
+    const mins = parseTime(d.time);
+    const timeDisplay = mins !== null ? formatTime(mins) : (d.time ? escapeHtml(d.time) : 'no time set');
+    const timeClass = mins !== null || d.time ? '' : 'empty';
+
+    row.innerHTML = `
+        <div class="dest-main">
+            ${sortMode === 'manual' ? '<div class="drag-handle" title="Drag to reorder"><i class="fas fa-grip-vertical"></i></div>' : '<div></div>'}
+            <div class="dest-info">
+                <div class="dest-name">${escapeHtml(d.name)}</div>
+                <div class="dest-route ${d.route ? '' : 'empty'}">${d.route ? escapeHtml(d.route) : 'no notes'}</div>
+            </div>
+            <div class="dest-time ${timeClass}">${timeDisplay}</div>
+            <div class="dest-actions">
+                <button class="btn-ghost" data-action="locate" title="Find on map"><i class="fas fa-map-pin"></i></button>
+                <button class="btn-ghost" data-action="edit" title="Edit"><i class="fas fa-pen"></i></button>
+                <button class="btn-danger-ghost" data-action="delete" title="Delete"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+        <div class="dest-edit">
+            <div class="edit-grid">
+                <div>
+                    <label>Name</label>
+                    <input type="text" data-field="name" value="${escapeHtml(d.name)}">
+                </div>
+                <div>
+                    <label>One-way time</label>
+                    <input type="text" data-field="time" value="${escapeHtml(d.time||'')}" placeholder="1h 45m">
+                </div>
+                <div class="full">
+                    <label>Route &amp; notes</label>
+                    <textarea data-field="route" placeholder="GO 88 direct, transfers, last bus...">${escapeHtml(d.route||'')}</textarea>
+                </div>
+            </div>
+            <div class="locate-status" data-locate-status></div>
+            <div class="edit-actions">
+                <button class="btn-outline" data-action="cancel">Cancel</button>
+                <button data-action="save"><i class="fas fa-check"></i> Save</button>
+            </div>
+        </div>
+    `;
+
+    // Wire actions
+    row.querySelectorAll('[data-action]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            handleAction(btn.dataset.action, d.id, row);
+        });
+    });
+    // Click main area to edit
+    row.querySelector('.dest-main').addEventListener('click', (e) => {
+        if (e.target.closest('button') || e.target.closest('.drag-handle')) return;
+        if (editingId !== d.id) {
+            editingId = d.id;
+            render();
+        }
+    });
+    // Hover for map highlight
+    row.addEventListener('mouseenter', () => highlightMarker(d.id));
+    row.addEventListener('mouseleave', () => highlightMarker(null));
+
+    // Drag-and-drop only in manual sort
+    if (sortMode === 'manual') {
+        const handle = row.querySelector('.drag-handle');
+        if (handle) {
+            handle.setAttribute('draggable', 'true');
+            handle.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', d.id);
+                row.style.opacity = '0.4';
+            });
+            handle.addEventListener('dragend', () => { row.style.opacity = ''; });
+        }
+        row.addEventListener('dragover', (e) => { e.preventDefault(); });
+        row.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const fromId = e.dataTransfer.getData('text/plain');
+            if (fromId && fromId !== d.id) reorder(fromId, d.id);
+        });
+    }
+
+    return row;
+}
+
+function handleAction(action, id, row) {
+    const d = destinations.find(x => x.id === id);
+    if (!d) return;
+
+    if (action === 'edit') {
+        editingId = id; render();
+    } else if (action === 'cancel') {
+        editingId = null; render();
+    } else if (action === 'save') {
+        const name = row.querySelector('[data-field="name"]').value.trim();
+        const time = row.querySelector('[data-field="time"]').value.trim();
+        const route = row.querySelector('[data-field="route"]').value.trim();
+        if (!name) { alert("Name can't be empty"); return; }
+        d.name = name; d.time = time; d.route = route;
+        saveDestinations(); editingId = null; render();
+    } else if (action === 'delete') {
+        if (confirm(`Delete "${d.name}"?`)) {
+            destinations = destinations.filter(x => x.id !== id);
+            if (editingId === id) editingId = null;
+            saveDestinations(); render();
+        }
+    } else if (action === 'locate') {
+        locateDestination(d, row);
+    }
+}
+
+function reorder(fromId, toId) {
+    const fromIdx = destinations.findIndex(d => d.id === fromId);
+    const toIdx = destinations.findIndex(d => d.id === toId);
+    if (fromIdx < 0 || toIdx < 0) return;
+    const [moved] = destinations.splice(fromIdx, 1);
+    destinations.splice(toIdx, 0, moved);
+    saveDestinations(); render();
+}
+
+// ---------- GEOCODING ----------
+async function locateDestination(d, row) {
+    const status = row.querySelector('[data-locate-status]');
+    // If already located, just pan/zoom
+    if (d.lat && d.lng) {
+        map.setView([d.lat, d.lng], 10);
+        if (markers[d.id]) markers[d.id].openPopup();
+        if (status) {
+            status.className = 'locate-status success';
+            status.innerText = `Already pinned at ${d.lat.toFixed(3)}, ${d.lng.toFixed(3)} — map centered. Click again or edit name to re-locate.`;
+        }
+        // Also handle the case where edit panel isn't open
+        if (editingId !== d.id) {
+            editingId = d.id; render();
+            setTimeout(() => locateDestination(d, document.querySelector(`.dest-row[data-id="${d.id}"]`)), 50);
+        }
+        return;
+    }
+    if (editingId !== d.id) {
+        editingId = d.id; render();
+        setTimeout(() => locateDestination(d, document.querySelector(`.dest-row[data-id="${d.id}"]`)), 50);
+        return;
+    }
+    if (status) {
+        status.className = 'locate-status';
+        status.innerText = 'Searching…';
+    }
+    try {
+        const q = encodeURIComponent(d.name + ', Ontario, Canada');
+        const resp = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`, {
+            headers: { 'Accept-Language': 'en' }
+        });
+        const data = await resp.json();
+        if (data && data.length) {
+            d.lat = parseFloat(data[0].lat);
+            d.lng = parseFloat(data[0].lon);
+            saveDestinations();
+            if (status) {
+                status.className = 'locate-status success';
+                status.innerText = `Pinned at ${d.lat.toFixed(3)}, ${d.lng.toFixed(3)}.`;
+            }
+            refreshMarkers();
+            if (markers[d.id]) {
+                map.setView([d.lat, d.lng], 10);
+                markers[d.id].openPopup();
+            }
+        } else {
+            if (status) {
+                status.className = 'locate-status error';
+                status.innerText = "Couldn't find that name. Try a more specific name (e.g. 'Oshawa GO Station').";
+            }
+        }
+    } catch (e) {
+        if (status) {
+            status.className = 'locate-status error';
+            status.innerText = 'Lookup failed: ' + e.message;
+        }
+    }
+}
+
+// ---------- MAP ----------
+function initMap() {
+    if (typeof L === 'undefined') {
+        document.getElementById('map').innerHTML =
+            '<div style="padding:24px;color:#b91c1c;font-family:Inter;">Map library failed to load. Check connection.</div>';
+        return;
+    }
+    map = L.map('map').setView([HOME.lat, HOME.lng], 8);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OSM & CartoDB', maxZoom: 19
+    }).addTo(map);
+
+    const homeIcon = L.divIcon({
+        className: 'home-marker',
+        html: `<div style="width:22px;height:22px;border-radius:50%;background:#0e7a5f;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;"><i class="fas fa-house" style="color:white;font-size:0.7rem;"></i></div>`,
+        iconSize: [22,22], iconAnchor: [11,11]
+    });
+    homeMarker = L.marker([HOME.lat, HOME.lng], { icon: homeIcon, zIndexOffset: 500 })
+        .addTo(map).bindPopup(`<strong>${HOME.name}</strong><br>home base`);
+    refreshMarkers();
+}
+
+function refreshMarkers() {
+    if (!map) return;
+    // Remove markers for destinations no longer present
+    Object.keys(markers).forEach(id => {
+        if (!destinations.find(d => d.id === id) || !destinations.find(d => d.id === id).lat) {
+            map.removeLayer(markers[id]);
+            delete markers[id];
+        }
+    });
+    // Add/update markers for located destinations
+    destinations.forEach(d => {
+        if (!d.lat || !d.lng) return;
+        const icon = L.divIcon({
+            className: 'dest-marker',
+            html: `<div style="width:14px;height:14px;border-radius:50%;background:#1a3a4d;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3);"></div>`,
+            iconSize: [14,14], iconAnchor: [7,7]
+        });
+        const popup = `<strong>${escapeHtml(d.name)}</strong>` +
+                      (d.time ? `<br>${escapeHtml(d.time)}` : '') +
+                      (d.route ? `<br><span style="font-size:0.7rem;color:#666;">${escapeHtml(d.route)}</span>` : '');
+        if (markers[d.id]) {
+            markers[d.id].setLatLng([d.lat, d.lng]);
+            markers[d.id].setIcon(icon);
+            markers[d.id].setPopupContent(popup);
+        } else {
+            markers[d.id] = L.marker([d.lat, d.lng], { icon })
+                .addTo(map).bindPopup(popup);
+            markers[d.id].on('mouseover', () => highlightMarker(d.id));
+            markers[d.id].on('mouseout', () => highlightMarker(null));
+        }
+    });
+    // Fit bounds if we have any
+    const located = destinations.filter(d => d.lat && d.lng);
+    if (located.length > 0) {
+        const bounds = L.latLngBounds([[HOME.lat, HOME.lng], ...located.map(d => [d.lat, d.lng])]);
+        // Only fit on first add — don't fight user pan/zoom on every render
+    }
+}
+
+function highlightMarker(id) {
+    document.querySelectorAll('.dest-row').forEach(r => {
+        r.classList.toggle('highlighted', r.dataset.id === id);
+    });
+    Object.entries(markers).forEach(([mid, m]) => {
+        if (!m._icon) return;
+        m._icon.style.transform = m._icon.style.transform.replace(/ scale\([^)]*\)/, '');
+        if (mid === id) m._icon.style.transform += ' scale(1.5)';
+        m._icon.style.transition = 'transform 0.15s';
+        m._icon.style.zIndex = (mid === id) ? 1000 : '';
+    });
+}
+
+// ---------- ADD / SORT / IO ----------
+document.getElementById('addBtn').addEventListener('click', () => {
+    const name = document.getElementById('newName').value.trim();
+    const time = document.getElementById('newTime').value.trim();
+    const route = document.getElementById('newRoute').value.trim();
+    if (!name) { alert("Name is required"); return; }
+    destinations.push({ id: uid(), name, time, route });
+    saveDestinations();
+    document.getElementById('newName').value = '';
+    document.getElementById('newTime').value = '';
+    document.getElementById('newRoute').value = '';
+    render();
+});
+
+document.querySelectorAll('#sortSeg button').forEach(b => {
+    b.addEventListener('click', () => {
+        document.querySelectorAll('#sortSeg button').forEach(x => x.classList.remove('active'));
+        b.classList.add('active');
+        sortMode = b.dataset.sort;
+        render();
+    });
+});
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(destinations, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `transit_destinations_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+});
+document.getElementById('importBtn').addEventListener('click', () => {
+    document.getElementById('importFile').click();
+});
+document.getElementById('importFile').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+        try {
+            const data = JSON.parse(reader.result);
+            if (!Array.isArray(data)) throw new Error("File doesn't contain a list");
+            if (!confirm(`Replace your current ${destinations.length} destination(s) with ${data.length} from this file?`)) return;
+            destinations = data.map(d => ({
+                id: d.id || uid(),
+                name: d.name || 'Untitled',
+                time: d.time || '',
+                route: d.route || '',
+                lat: d.lat || null,
+                lng: d.lng || null
+            }));
+            saveDestinations(); render();
+        } catch (err) {
+            alert("Couldn't import: " + err.message);
+        }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+});
+
+// ---------- BOOT ----------
+window.addEventListener('DOMContentLoaded', () => {
+    initMap();
+    render();
+});
+</script>
+</body>
+</html>
